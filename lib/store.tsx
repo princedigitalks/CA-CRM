@@ -2,13 +2,20 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+export const DOCUMENT_CATEGORIES = ['PAN Card', 'Aadhaar Card', 'GST Certificate', 'Udyam Certificate', 'ITR', 'Other'] as const;
+export type DocumentCategory = typeof DOCUMENT_CATEGORIES[number];
+
+export const ITR_YEARS = ['2024-25', '2023-24', '2022-23', '2021-22'] as const;
+export type ItrYear = typeof ITR_YEARS[number];
+
 export type Document = {
   id: string;
   name: string;
   type: string;
   size: string;
   uploadedAt: string;
-  category: string;
+  category: DocumentCategory;
+  itrYear?: ItrYear; // only when category === 'ITR'
 };
 
 export type FamilyMember = {
@@ -26,7 +33,8 @@ export type Client = {
   name: string;
   email: string;
   phone: string;
-  status: 'ACTIVE' | 'INACTIVE';
+  paymentStatus: 'CLEAR' | 'PENDING'; // controls WhatsApp chatbot access
+  serviceEnabled: boolean;             // admin ON/OFF toggle
   createdAt: string;
   documents: Document[];
   familyMembers: FamilyMember[];
@@ -41,6 +49,7 @@ type Store = {
   deleteFamilyMember: (clientId: string, memberId: string) => void;
   addDocument: (clientId: string, doc: Omit<Document, 'id' | 'uploadedAt'>, memberId?: string) => void;
   deleteDocument: (clientId: string, docId: string, memberId?: string) => void;
+  findByPhone: (phone: string) => Client | undefined;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -51,11 +60,14 @@ const SEED: Client[] = [
     name: 'Prince Sojitra',
     email: 'prince@example.com',
     phone: '+91 98765 43210',
-    status: 'ACTIVE',
+    paymentStatus: 'CLEAR',
+    serviceEnabled: true,
     createdAt: '2024-01-15',
     documents: [
-      { id: 'd1', name: 'Aadhar_Card.pdf', type: 'PDF', size: '1.2 MB', uploadedAt: '2024-03-01', category: 'Identity' },
-      { id: 'd2', name: 'PAN_Card.pdf', type: 'PDF', size: '0.8 MB', uploadedAt: '2024-03-05', category: 'Identity' },
+      { id: 'd1', name: 'Aadhar_Card.pdf', type: 'PDF', size: '1.2 MB', uploadedAt: '2024-03-01', category: 'Aadhaar Card' },
+      { id: 'd2', name: 'PAN_Card.pdf', type: 'PDF', size: '0.8 MB', uploadedAt: '2024-03-05', category: 'PAN Card' },
+      { id: 'd3', name: 'ITR_2024-25.pdf', type: 'PDF', size: '2.1 MB', uploadedAt: '2024-04-01', category: 'ITR', itrYear: '2024-25' },
+      { id: 'd4', name: 'ITR_2023-24.pdf', type: 'PDF', size: '1.9 MB', uploadedAt: '2024-04-01', category: 'ITR', itrYear: '2023-24' },
     ],
     familyMembers: [
       {
@@ -66,7 +78,7 @@ const SEED: Client[] = [
         phone: '+91 98765 11111',
         email: 'ravi@example.com',
         documents: [
-          { id: 'fd1', name: 'Ravi_Aadhar.pdf', type: 'PDF', size: '1.1 MB', uploadedAt: '2024-03-10', category: 'Identity' },
+          { id: 'fd1', name: 'Ravi_Aadhar.pdf', type: 'PDF', size: '1.1 MB', uploadedAt: '2024-03-10', category: 'Aadhaar Card' },
         ],
       },
     ],
@@ -76,7 +88,8 @@ const SEED: Client[] = [
     name: 'Anjali Mehta',
     email: 'anjali@example.com',
     phone: '+91 91234 56789',
-    status: 'ACTIVE',
+    paymentStatus: 'PENDING',
+    serviceEnabled: true,
     createdAt: '2024-02-10',
     documents: [],
     familyMembers: [],
@@ -146,8 +159,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
+  const findByPhone: Store['findByPhone'] = (phone) => {
+    const normalized = phone.replace(/\s+/g, '');
+    return clients.find(c => c.phone.replace(/\s+/g, '') === normalized);
+  };
+
   return (
-    <StoreContext.Provider value={{ clients, addClient, updateClient, deleteClient, addFamilyMember, deleteFamilyMember, addDocument, deleteDocument }}>
+    <StoreContext.Provider value={{ clients, addClient, updateClient, deleteClient, addFamilyMember, deleteFamilyMember, addDocument, deleteDocument, findByPhone }}>
       {children}
     </StoreContext.Provider>
   );

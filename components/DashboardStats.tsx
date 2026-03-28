@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Users, FileText, UserPlus } from 'lucide-react';
+import { Users, FileText, UserPlus, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useStore } from '@/lib/store';
 
@@ -14,15 +14,17 @@ export function DashboardStats() {
   }, 0);
 
   const totalMembers = clients.reduce((acc, c) => acc + c.familyMembers.length, 0);
+  const pendingPayments = clients.filter(c => c.paymentStatus === 'PENDING').length;
 
   const stats = [
     { label: 'Total Clients', value: clients.length, icon: Users, color: 'bg-blue-50 text-blue-600', delay: 0 },
     { label: 'Family Members', value: totalMembers, icon: UserPlus, color: 'bg-indigo-50 text-indigo-600', delay: 0.1 },
     { label: 'Total Documents', value: totalDocs, icon: FileText, color: 'bg-orange-50 text-orange-600', delay: 0.2 },
+    { label: 'Payment Pending', value: pendingPayments, icon: AlertCircle, color: 'bg-red-50 text-red-500', delay: 0.3 },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       {stats.map((stat) => (
         <motion.div
           key={stat.label}

@@ -2,18 +2,20 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useStore, Document, FamilyMember } from '@/lib/store';
+import { useStore, Document, FamilyMember, DOCUMENT_CATEGORIES, ITR_YEARS } from '@/lib/store';
 import { motion } from 'motion/react';
 import { ArrowLeft, Plus, Trash2, FileText, UserPlus, Upload, X, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 
-// ── Upload Document Modal ──────────────────────────────────────────────────
 function UploadDocModal({ onClose, onSave }: { onClose: () => void; onSave: (doc: Omit<Document, 'id' | 'uploadedAt'>) => void }) {
-  const [form, setForm] = useState({ name: '', type: 'PDF', size: '', category: 'Identity' });
+  const [form, setForm] = useState<{ name: string; type: string; size: string; category: Document['category']; itrYear?: Document['itrYear'] }>({
+    name: '', type: 'PDF', size: '', category: 'PAN Card',
+  });
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) return;
+    if (form.category === 'ITR' && !form.itrYear) return;
     onSave({ ...form, size: form.size || 'N/A' });
     onClose();
   };
@@ -41,12 +43,22 @@ function UploadDocModal({ onClose, onSave }: { onClose: () => void; onSave: (doc
             </div>
             <div>
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Category</label>
-              <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+              <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value as Document['category'], itrYear: undefined }))}
                 className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100">
-                {['Identity', 'Financial', 'Medical', 'Legal', 'Property', 'Other'].map(c => <option key={c}>{c}</option>)}
+                {DOCUMENT_CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
           </div>
+          {form.category === 'ITR' && (
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">ITR Year *</label>
+              <select value={form.itrYear ?? ''} onChange={e => setForm(p => ({ ...p, itrYear: e.target.value as Document['itrYear'] }))}
+                className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" required>
+                <option value="">Select Year</option>
+                {ITR_YEARS.map(y => <option key={y} value={y}>ITR {y}</option>)}
+              </select>
+            </div>
+          )}
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">File Size</label>
             <input value={form.size} onChange={e => setForm(p => ({ ...p, size: e.target.value }))}
@@ -62,7 +74,6 @@ function UploadDocModal({ onClose, onSave }: { onClose: () => void; onSave: (doc
   );
 }
 
-// ── Add Family Member Modal ────────────────────────────────────────────────
 function AddMemberModal({ onClose, onSave }: { onClose: () => void; onSave: (m: Omit<FamilyMember, 'id' | 'clientId' | 'documents'>) => void }) {
   const [form, setForm] = useState({ name: '', relation: 'Spouse', phone: '', email: '' });
 
@@ -94,7 +105,7 @@ function AddMemberModal({ onClose, onSave }: { onClose: () => void; onSave: (m: 
             </select>
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Phone *</label>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">WhatsApp Phone *</label>
             <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
               className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" placeholder="+91 98765 43210" required />
           </div>
@@ -113,12 +124,7 @@ function AddMemberModal({ onClose, onSave }: { onClose: () => void; onSave: (m: 
   );
 }
 
-// ── Document List ──────────────────────────────────────────────────────────
-function DocumentList({ docs, onDelete, onAdd }: {
-  docs: Document[];
-  onDelete: (id: string) => void;
-  onAdd: () => void;
-}) {
+function DocumentList({ docs, onDelete, onAdd }: { docs: Document[]; onDelete: (id: string) => void; onAdd: () => void }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -140,7 +146,9 @@ function DocumentList({ docs, onDelete, onAdd }: {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-gray-900 truncate">{doc.name}</p>
-                <p className="text-[10px] text-gray-400">{doc.category} · {doc.type} · {doc.size} · {doc.uploadedAt}</p>
+                <p className="text-[10px] text-gray-400">
+                  {doc.category}{doc.itrYear ? ` · ${doc.itrYear}` : ''} · {doc.type} · {doc.size} · {doc.uploadedAt}
+                </p>
               </div>
               <button onClick={() => onDelete(doc.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 transition-all">
                 <Trash2 size={14} />
@@ -153,13 +161,13 @@ function DocumentList({ docs, onDelete, onAdd }: {
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────────────────────
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { clients, addFamilyMember, deleteFamilyMember, addDocument, deleteDocument } = useStore();
+  const { clients, updateClient, addFamilyMember, deleteFamilyMember, addDocument, deleteDocument } = useStore();
   const client = clients.find(c => c.id === id);
 
+  const totalDocs = client ? client.documents.length + client.familyMembers.reduce((a, m) => a + m.documents.length, 0) : 0;
   const [tab, setTab] = useState<'documents' | 'family'>('documents');
   const [showAddMember, setShowAddMember] = useState(false);
   const [showUploadClient, setShowUploadClient] = useState(false);
@@ -178,26 +186,16 @@ export default function ClientDetailPage() {
   return (
     <>
       {showUploadClient && (
-        <UploadDocModal
-          onClose={() => setShowUploadClient(false)}
-          onSave={doc => addDocument(client.id, doc)}
-        />
+        <UploadDocModal onClose={() => setShowUploadClient(false)} onSave={doc => addDocument(client.id, doc)} />
       )}
       {uploadMemberId && (
-        <UploadDocModal
-          onClose={() => setUploadMemberId(null)}
-          onSave={doc => addDocument(client.id, doc, uploadMemberId)}
-        />
+        <UploadDocModal onClose={() => setUploadMemberId(null)} onSave={doc => addDocument(client.id, doc, uploadMemberId)} />
       )}
       {showAddMember && (
-        <AddMemberModal
-          onClose={() => setShowAddMember(false)}
-          onSave={m => addFamilyMember(client.id, m)}
-        />
+        <AddMemberModal onClose={() => setShowAddMember(false)} onSave={m => addFamilyMember(client.id, m)} />
       )}
 
       <div className="max-w-5xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 text-sm font-bold mb-6 transition-colors">
             <ArrowLeft size={16} /> Back to Clients
@@ -209,12 +207,19 @@ export default function ClientDetailPage() {
             </div>
             <div className="flex-1">
               <h2 className="text-3xl font-bold text-gray-900">{client.name}</h2>
-              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+              <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 flex-wrap">
                 {client.email && <span>{client.email}</span>}
                 <span>{client.phone}</span>
-                <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider ${client.status === 'ACTIVE' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {client.status}
-                </span>
+                <button
+                  onClick={() => updateClient(client.id, { paymentStatus: client.paymentStatus === 'CLEAR' ? 'PENDING' : 'CLEAR' })}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider cursor-pointer transition-colors ${client.paymentStatus === 'CLEAR' ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}>
+                  Payment: {client.paymentStatus}
+                </button>
+                <button
+                  onClick={() => updateClient(client.id, { serviceEnabled: !client.serviceEnabled })}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider cursor-pointer transition-colors ${client.serviceEnabled ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                  Service: {client.serviceEnabled ? 'ON' : 'OFF'}
+                </button>
               </div>
             </div>
             <div className="flex gap-6 text-center">
@@ -223,14 +228,13 @@ export default function ClientDetailPage() {
                 <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Members</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-blue-600">{client.documents.length}</p>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Docs</p>
+                <p className="text-2xl font-bold text-blue-600">{totalDocs}</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Total Docs</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex items-center gap-2 mb-6">
           <button onClick={() => setTab('documents')}
             className={`px-6 py-3 rounded-2xl font-bold text-sm transition-colors ${tab === 'documents' ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white text-gray-500 border border-gray-100 hover:text-gray-900'}`}>
@@ -242,7 +246,6 @@ export default function ClientDetailPage() {
           </button>
         </div>
 
-        {/* Documents Tab */}
         {tab === 'documents' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
@@ -261,7 +264,6 @@ export default function ClientDetailPage() {
           </motion.div>
         )}
 
-        {/* Family Members Tab */}
         {tab === 'family' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
             <div className="flex justify-end">
@@ -286,7 +288,6 @@ export default function ClientDetailPage() {
             {client.familyMembers.map((member, i) => (
               <motion.div key={member.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                 className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                {/* Member Header */}
                 <div className="p-6 flex items-center gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xl">
                     {member.name.charAt(0)}
@@ -314,7 +315,6 @@ export default function ClientDetailPage() {
                   </div>
                 </div>
 
-                {/* Member Documents (expandable) */}
                 {expandedMember === member.id && (
                   <div className="px-6 pb-6 border-t border-gray-50 pt-4">
                     <DocumentList

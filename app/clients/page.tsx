@@ -8,7 +8,6 @@ export default function ClientsPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-10">
-        <p className="text-gray-400 text-sm font-medium mb-1">Vault / <span className="text-blue-600">Clients</span></p>
         <h2 className="text-4xl font-bold text-gray-900 tracking-tight">Client Management</h2>
         <p className="text-gray-500 mt-2">Add clients, manage their family members and documents.</p>
       </div>
