@@ -4,8 +4,26 @@ import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useStore, Document, FamilyMember, DOCUMENT_CATEGORIES, ITR_YEARS } from '@/lib/store';
 import { motion } from 'motion/react';
-import { ArrowLeft, Plus, Trash2, FileText, UserPlus, Upload, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, FileText, UserPlus, Upload, X, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 import Link from 'next/link';
+
+function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center">
+        <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <Trash2 size={24} className="text-red-500" />
+        </div>
+        <h3 className="text-lg font-bold text-gray-900 mb-2">Are you sure?</h3>
+        <p className="text-sm text-gray-500 mb-6">{message}</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+          <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors">Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function UploadDocModal({ onClose, onSave }: { onClose: () => void; onSave: (doc: Omit<Document, 'id' | 'uploadedAt'>) => void }) {
   const [form, setForm] = useState<{ name: string; type: string; size: string; category: Document['category']; itrYear?: Document['itrYear'] }>({
@@ -124,9 +142,72 @@ function AddMemberModal({ onClose, onSave }: { onClose: () => void; onSave: (m: 
   );
 }
 
+function EditMemberModal({ member, onClose, onSave }: {
+  member: FamilyMember;
+  onClose: () => void;
+  onSave: (data: Omit<FamilyMember, 'id' | 'clientId' | 'documents'>) => void;
+}) {
+  const [form, setForm] = useState({ name: member.name, relation: member.relation, phone: member.phone, email: member.email });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.phone.trim()) return;
+    onSave(form);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-900">Edit Family Member</h3>
+          <button onClick={onClose}><X size={20} className="text-gray-400 hover:text-gray-900" /></button>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Full Name *</label>
+            <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+              className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" required />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Relation</label>
+            <select value={form.relation} onChange={e => setForm(p => ({ ...p, relation: e.target.value }))}
+              className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100">
+              {['Spouse', 'Father', 'Mother', 'Son', 'Daughter', 'Brother', 'Sister', 'Other'].map(r => <option key={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">WhatsApp Phone *</label>
+            <input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+              className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" required />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email</label>
+            <input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+              type="email" className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+            <button type="submit" className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function DocumentList({ docs, onDelete, onAdd }: { docs: Document[]; onDelete: (id: string) => void; onAdd: () => void }) {
+  const [confirmDocId, setConfirmDocId] = useState<string | null>(null);
+
   return (
     <div>
+      {confirmDocId && (
+        <ConfirmModal
+          message="This document will be permanently deleted."
+          onCancel={() => setConfirmDocId(null)}
+          onConfirm={() => { onDelete(confirmDocId); setConfirmDocId(null); }}
+        />
+      )}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm font-bold text-gray-500">{docs.length} document{docs.length !== 1 ? 's' : ''}</p>
         <button onClick={onAdd} className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-2 rounded-xl transition-colors">
@@ -150,7 +231,7 @@ function DocumentList({ docs, onDelete, onAdd }: { docs: Document[]; onDelete: (
                   {doc.category}{doc.itrYear ? ` · ${doc.itrYear}` : ''} · {doc.type} · {doc.size} · {doc.uploadedAt}
                 </p>
               </div>
-              <button onClick={() => onDelete(doc.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 transition-all">
+              <button onClick={() => setConfirmDocId(doc.id)} className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 transition-all">
                 <Trash2 size={14} />
               </button>
             </div>
@@ -173,6 +254,8 @@ export default function ClientDetailPage() {
   const [showUploadClient, setShowUploadClient] = useState(false);
   const [uploadMemberId, setUploadMemberId] = useState<string | null>(null);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
+  const [editMember, setEditMember] = useState<FamilyMember | null>(null);
+  const [confirmMemberId, setConfirmMemberId] = useState<string | null>(null);
 
   if (!client) {
     return (
@@ -185,14 +268,27 @@ export default function ClientDetailPage() {
 
   return (
     <>
-      {showUploadClient && (
-        <UploadDocModal onClose={() => setShowUploadClient(false)} onSave={doc => addDocument(client.id, doc)} />
+      {showUploadClient && <UploadDocModal onClose={() => setShowUploadClient(false)} onSave={doc => addDocument(client.id, doc)} />}
+      {uploadMemberId && <UploadDocModal onClose={() => setUploadMemberId(null)} onSave={doc => addDocument(client.id, doc, uploadMemberId)} />}
+      {showAddMember && <AddMemberModal onClose={() => setShowAddMember(false)} onSave={m => addFamilyMember(client.id, m)} />}
+      {editMember && (
+        <EditMemberModal
+          member={editMember}
+          onClose={() => setEditMember(null)}
+          onSave={(data) => {
+            const updated = client.familyMembers.map(m =>
+              m.id === editMember.id ? { ...m, ...data } : m
+            );
+            updateClient(client.id, { familyMembers: updated });
+          }}
+        />
       )}
-      {uploadMemberId && (
-        <UploadDocModal onClose={() => setUploadMemberId(null)} onSave={doc => addDocument(client.id, doc, uploadMemberId)} />
-      )}
-      {showAddMember && (
-        <AddMemberModal onClose={() => setShowAddMember(false)} onSave={m => addFamilyMember(client.id, m)} />
+      {confirmMemberId && (
+        <ConfirmModal
+          message="This will permanently delete the family member and all their documents."
+          onCancel={() => setConfirmMemberId(null)}
+          onConfirm={() => { deleteFamilyMember(client.id, confirmMemberId); setConfirmMemberId(null); }}
+        />
       )}
 
       <div className="max-w-5xl mx-auto">
@@ -220,6 +316,7 @@ export default function ClientDetailPage() {
                   className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider cursor-pointer transition-colors ${client.serviceEnabled ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
                   Service: {client.serviceEnabled ? 'ON' : 'OFF'}
                 </button>
+                <span className="text-[10px] text-gray-400">Since {client.createdAt}</span>
               </div>
             </div>
             <div className="flex gap-6 text-center">
@@ -308,8 +405,10 @@ export default function ClientDetailPage() {
                       className="p-2 text-gray-400 hover:text-gray-900 transition-colors">
                       {expandedMember === member.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </button>
-                    <button onClick={() => deleteFamilyMember(client.id, member.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 transition-colors">
+                    <button onClick={() => setEditMember(member)} className="p-2 text-gray-400 hover:text-indigo-500 transition-colors">
+                      <Pencil size={16} />
+                    </button>
+                    <button onClick={() => setConfirmMemberId(member.id)} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
                       <Trash2 size={18} />
                     </button>
                   </div>

@@ -3,8 +3,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, HelpCircle, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, HelpCircle, Shield, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -14,6 +16,13 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/login');
+  };
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-100 flex flex-col z-50">
@@ -51,6 +60,16 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      <div className="p-4 border-t border-gray-100">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-500 transition-all group"
+        >
+          <LogOut size={18} className="text-gray-400 group-hover:text-red-500 transition-colors" />
+          <span className="font-medium text-sm">Logout</span>
+        </button>
+      </div>
     </aside>
   );
 }
