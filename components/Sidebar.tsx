@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
   { icon: Users, label: 'Clients', href: '/clients' },
-  { icon: HelpCircle, label: 'Help Center', href: '/help' },
+  // { icon: HelpCircle, label: 'Help Center', href: '/help' },
 ];
 
 const adminNavItems = [
