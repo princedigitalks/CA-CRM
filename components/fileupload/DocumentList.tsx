@@ -82,26 +82,18 @@ const isImageDocument = (doc: Document) => {
   return doc.type === 'Image' || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension || '');
 };
 
-// Helper function to get document URL
-const getDocumentUrl = (filePath: string) => {
-  if (filePath.startsWith('https://')) {
-    return filePath;
-  }
-  return process.env.NEXT_PUBLIC_IMAGE_URL + filePath;
-};
-
 // Small Document Preview Component for sublist
 function SmallDocumentPreview({ doc, onView }: { doc: Document; onView?: (doc: Document) => void }) {
   const [imageError, setImageError] = useState(false);
-
+  
   if (isImageDocument(doc) && !imageError) {
     return (
-      <div
+      <div 
         className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center cursor-pointer overflow-hidden flex-shrink-0"
         onClick={() => onView?.(doc)}
       >
         <img
-          src={getDocumentUrl(doc.filePath)}
+          src={process.env.NEXT_PUBLIC_IMAGE_URL + doc.filePath}
           alt={doc.name}
           className="w-full h-full object-cover"
           onError={() => setImageError(true)}
@@ -121,15 +113,15 @@ function SmallDocumentPreview({ doc, onView }: { doc: Document; onView?: (doc: D
 // Document Preview Component for main list
 function DocumentPreview({ doc, onView }: { doc: Document; onView?: (doc: Document) => void }) {
   const [imageError, setImageError] = useState(false);
-
+  
   if (isImageDocument(doc) && !imageError) {
     return (
-      <div
+      <div 
         className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center cursor-pointer overflow-hidden"
         onClick={() => onView?.(doc)}
       >
         <img
-          src={getDocumentUrl(doc.filePath)}
+          src={process.env.NEXT_PUBLIC_IMAGE_URL + doc.filePath}
           alt={doc.name}
           className="w-full h-full object-cover"
           onError={() => setImageError(true)}

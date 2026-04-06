@@ -36,7 +36,7 @@ function CopyPhone({ phone }: { phone: string }) {
 
 function AddClientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { toast } = useToast();
-  const [form, setForm] = useState({ name: '', phone: '', paymentStatus: 'CLEAR' as Client['paymentStatus'], serviceEnabled: true });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', paymentStatus: 'PENDING' as Client['paymentStatus'], serviceEnabled: true });
   const [loading, setLoading] = useState(false);
   useEscClose(onClose);
 
@@ -68,6 +68,11 @@ function AddClientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Full Name *</label>
             <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} autoFocus
               className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" placeholder="e.g. Prince Sojitra" required />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email</label>
+            <input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+              type="email" className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" placeholder="email@example.com" />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">WhatsApp Phone *</label>
@@ -110,7 +115,7 @@ function AddClientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 
 function EditClientModal({ client, onClose, onSuccess }: { client: Client; onClose: () => void; onSuccess: () => void }) {
   const { toast } = useToast();
-  const [form, setForm] = useState({ name: client.name, phone: client.phone, paymentStatus: client.paymentStatus, serviceEnabled: client.serviceEnabled });
+  const [form, setForm] = useState({ name: client.name, email: client.email, phone: client.phone, paymentStatus: client.paymentStatus, serviceEnabled: client.serviceEnabled });
   const [loading, setLoading] = useState(false);
   useEscClose(onClose);
 
@@ -142,6 +147,11 @@ function EditClientModal({ client, onClose, onSuccess }: { client: Client; onClo
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Full Name *</label>
             <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} autoFocus
               className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" required />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email</label>
+            <input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+              type="email" className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">WhatsApp Phone *</label>

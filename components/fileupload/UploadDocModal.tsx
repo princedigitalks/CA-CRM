@@ -399,11 +399,10 @@ export function UploadDocModal({
         itrYear: initialData?.itrYear,
     });
     const [file, setFile] = useState<File | null>(null);
+    const [backFile, setBackFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [backPreviewUrl, setBackPreviewUrl] = useState<string | null>(null);
     const [uploadNewFile, setUploadNewFile] = useState(false);
-    const [uploadMode, setUploadMode] = useState<'file' | 'link'>('file');
-    const [link, setLink] = useState('');
-    const [masters, setMasters] = useState<{ _id: string; name: string; type: string; isActive: boolean }[]>([]);
 
     // Fetch ITR years from backend
     useEffect(() => {
@@ -436,7 +435,7 @@ export function UploadDocModal({
 
     console.log(form.category,'form.category')
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, isBackFile = false) => {
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
             // Validate file size (max 10MB)
@@ -445,24 +444,35 @@ export function UploadDocModal({
                 return;
             }
 
-            setFile(selectedFile);
-            const fileSizeMB = (selectedFile.size / (1024 * 1024)).toFixed(2);
-            const fileExtension = selectedFile.name.split('.').pop()?.toUpperCase() || 'Unknown';
-            const fileType = getFileType(selectedFile.type, fileExtension);
-
-            setForm(p => ({
-                ...p,
-                name: selectedFile.name,
-                size: fileSizeMB + ' MB',
-                type: fileType
-            }));
-
-            // Create preview for images
-            if (selectedFile.type.startsWith('image/')) {
-                const url = URL.createObjectURL(selectedFile);
-                setPreviewUrl(url);
+            if (isBackFile) {
+                setBackFile(selectedFile);
+                // Create preview for back file
+                if (selectedFile.type.startsWith('image/')) {
+                    const url = URL.createObjectURL(selectedFile);
+                    setBackPreviewUrl(url);
+                } else {
+                    setBackPreviewUrl(null);
+                }
             } else {
-                setPreviewUrl(null);
+                setFile(selectedFile);
+                const fileSizeMB = (selectedFile.size / (1024 * 1024)).toFixed(2);
+                const fileExtension = selectedFile.name.split('.').pop()?.toUpperCase() || 'Unknown';
+                const fileType = getFileType(selectedFile.type, fileExtension);
+
+                setForm(p => ({
+                    ...p,
+                    name: selectedFile.name,
+                    size: fileSizeMB + ' MB',
+                    type: fileType
+                }));
+
+                // Create preview for images
+                if (selectedFile.type.startsWith('image/')) {
+                    const url = URL.createObjectURL(selectedFile);
+                    setPreviewUrl(url);
+                } else {
+                    setPreviewUrl(null);
+                }
             }
             setUploadNewFile(true);
         }
@@ -513,32 +523,66 @@ export function UploadDocModal({
         }
 
         // For new upload or file replacement in edit mode
+        const isAadhar = form.category === 'Aadhaar Card';
         if (isFileUpload && !isEdit) {
             // New upload validation
-            if (uploadMode === 'file' && !file) {
-                toast('Please select a file to upload', 'error');
-                return;
-            }
-            if (uploadMode === 'link' && !link.trim()) {
-                toast('Please enter a direct link', 'error');
-                return;
+            if (isAadhar) {
+                if (!file || !backFile) {
+                    toast('Please select both front and back files for Aadhaar Card', 'error');
+                    return;
+                }
+            } else {
+                if (!file) {
+                    toast('Please select a file to upload', 'error');
+                    return;
+                }
             }
         } else if (isEdit && uploadNewFile) {
             // Edit mode file replacement validation
-            if (uploadMode === 'file' && !file) {
-                toast('Please select a file to upload', 'error');
-                return;
-            }
-            if (uploadMode === 'link' && !link.trim()) {
-                toast('Please enter a direct link', 'error');
-                return;
+            if (isAadhar) {
+                if (!file && !backFile) {
+                    toast('Please select at least one file to replace', 'error');
+                    return;
+                }
+            } else {
+                if (!file) {
+                    toast('Please select a file to upload', 'error');
+                    return;
+                }
             }
         }
 
         setLoading(true);
         try {
-            if (uploadMode === 'file' && file) {
-                // Upload file (for both new uploads and file replacement in edit)
+            if (isAadhar && (file || backFile)) {
+                // Handle Aadhaar Card - upload both front and back sequentially
+                if (file) {
+                    await onSave({
+                        file,
+                        name: form.name + ' - Front',
+                        category: form.category,
+                        itrYear: form.itrYear,
+                        type: form.type,
+                        size: form.size,
+                        replaceFile: true
+                    });
+                }
+                if (backFile) {
+                    const backFileSizeMB = (backFile.size / (1024 * 1024)).toFixed(2);
+                    const backFileExtension = backFile.name.split('.').pop()?.toUpperCase() || 'Unknown';
+                    const backFileType = getFileType(backFile.type, backFileExtension);
+                    await onSave({
+                        file: backFile,
+                        name: form.name + ' - Back',
+                        category: form.category,
+                        itrYear: form.itrYear,
+                        type: backFileType,
+                        size: backFileSizeMB + ' MB',
+                        replaceFile: true
+                    });
+                }
+            } else if (file) {
+                // Upload single file (for both new uploads and file replacement in edit)
                 await onSave({
                     file,
                     name: form.name,
@@ -547,17 +591,6 @@ export function UploadDocModal({
                     type: form.type,
                     size: form.size,
                     replaceFile: true
-                });
-            } else if (uploadMode === 'link' && link.trim()) {
-                // Add document with direct link
-                await onSave({
-                    filePath: link.trim(),
-                    name: form.name,
-                    category: form.category,
-                    itrYear: form.itrYear,
-                    type: 'Link',
-                    size: 'N/A',
-                    replaceFile: false
                 });
             } else {
                 // Update metadata only (no file change)
@@ -585,8 +618,11 @@ export function UploadDocModal({
             if (previewUrl) {
                 URL.revokeObjectURL(previewUrl);
             }
+            if (backPreviewUrl) {
+                URL.revokeObjectURL(backPreviewUrl);
+            }
         };
-    }, [previewUrl]);
+    }, [previewUrl, backPreviewUrl]);
 
     const getFileIcon = () => {
         if (form.type === 'PDF') return '📄';
@@ -607,61 +643,78 @@ export function UploadDocModal({
                 </div>
 
                 <form onSubmit={submit} className="space-y-4">
-                    {/* Upload mode toggle */}
-                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                        <span className="text-sm font-medium text-gray-700">Upload Type:</span>
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm text-gray-600">File</span>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const newMode = uploadMode === 'file' ? 'link' : 'file';
-                                    setUploadMode(newMode);
-                                    setFile(null);
-                                    setPreviewUrl(null);
-                                    setLink('');
-                                }}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${uploadMode === 'file' ? 'bg-blue-600' : 'bg-gray-200'}`}
-                            >
-                                <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${uploadMode === 'file' ? 'translate-x-6' : 'translate-x-1'}`}
-                                />
-                            </button>
-                            <span className="text-sm text-gray-600">Link</span>
-                        </div>
-                    </div>
-
                     {/* File upload section */}
-                    {(isFileUpload && uploadMode === 'file') && (
+                    {(isFileUpload) && (
                         <div>
                             {form.category === 'Aadhaar Card' ? (
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                                        Select PDF *
-                                    </label>
-                                    <div className="mt-1 border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
-                                        <input
-                                            type="file"
-                                            onChange={handleFileChange}
-                                            accept=".pdf"
-                                            className="hidden"
-                                            id="file-input"
-                                        />
-                                        <label htmlFor="file-input" className="cursor-pointer block">
-                                            {file ? (
-                                                <div className="space-y-2">
-                                                    <File size={32} className="text-blue-600 mx-auto" />
-                                                    <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                                                    <p className="text-xs text-gray-500">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    <Upload size={32} className="text-gray-400 mx-auto mb-2" />
-                                                    <p className="text-sm text-gray-500">Click to select PDF</p>
-                                                    <p className="text-xs text-gray-400 mt-1">PDF only (Max 10MB)</p>
-                                                </div>
-                                            )}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            Front Side *
                                         </label>
+                                        <div className="mt-1 border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
+                                            <input
+                                                type="file"
+                                                onChange={(e) => handleFileChange(e, false)}
+                                                accept=".jpg,.jpeg,.png"
+                                                className="hidden"
+                                                id="front-file-input"
+                                            />
+                                            <label htmlFor="front-file-input" className="cursor-pointer block">
+                                                {file ? (
+                                                    <div className="space-y-2">
+                                                        <File size={32} className="text-blue-600 mx-auto" />
+                                                        <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                                        <p className="text-xs text-gray-500">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                                        {previewUrl && (
+                                                            <div className="mt-2">
+                                                                <img src={previewUrl} alt="Front Preview" className="max-h-32 mx-auto rounded-lg" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <Upload size={32} className="text-gray-400 mx-auto mb-2" />
+                                                        <p className="text-sm text-gray-500">Click to select front side</p>
+                                                        <p className="text-xs text-gray-400 mt-1">Images only (Max 10MB)</p>
+                                                    </div>
+                                                )}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            Back Side *
+                                        </label>
+                                        <div className="mt-1 border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
+                                            <input
+                                                type="file"
+                                                onChange={(e) => handleFileChange(e, true)}
+                                                accept=".jpg,.jpeg,.png"
+                                                className="hidden"
+                                                id="back-file-input"
+                                            />
+                                            <label htmlFor="back-file-input" className="cursor-pointer block">
+                                                {backFile ? (
+                                                    <div className="space-y-2">
+                                                        <File size={32} className="text-blue-600 mx-auto" />
+                                                        <p className="text-sm font-medium text-gray-900">{backFile.name}</p>
+                                                        <p className="text-xs text-gray-500">{(backFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                                        {backPreviewUrl && (
+                                                            <div className="mt-2">
+                                                                <img src={backPreviewUrl} alt="Back Preview" className="max-h-32 mx-auto rounded-lg" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <Upload size={32} className="text-gray-400 mx-auto mb-2" />
+                                                        <p className="text-sm text-gray-500">Click to select back side</p>
+                                                        <p className="text-xs text-gray-400 mt-1">Images only (Max 10MB)</p>
+                                                    </div>
+                                                )}
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
@@ -741,20 +794,6 @@ export function UploadDocModal({
                             required
                         />
                     </div>
-
-                    {/* Direct link input */}
-                    {(isFileUpload && uploadMode === 'link') && (
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Direct Link *</label>
-                            <input
-                                value={link}
-                                onChange={e => setLink(e.target.value)}
-                                className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100"
-                                placeholder="https://example.com/document.pdf"
-                                required
-                            />
-                        </div>
-                    )}
 
                     {(!isFileUpload || (isEdit && !uploadNewFile)) && (
                         <div className="grid grid-cols-2 gap-4">

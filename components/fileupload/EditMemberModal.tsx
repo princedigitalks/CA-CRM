@@ -16,8 +16,7 @@ export default function EditMemberModal({ member, onClose, onSave }: {
 }) {
   const { getMasters } = useStore();
   const [loading, setLoading] = useState(false);
-  const [masters, setMasters] = useState<Master[]>([]);
-  const [form, setForm] = useState({ name: member.name });
+  const [form, setForm] = useState({ name: member.name, relation: member.relation, phone: member.phone, email: member.email });
 
   useEffect(() => {
     const fetchMasters = async () => {
@@ -33,9 +32,9 @@ export default function EditMemberModal({ member, onClose, onSave }: {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || !form.phone.trim()) return;
     setLoading(true);
-    await onSave({ ...form, relation: '', phone: '', email: '' });
+    await onSave(form);
     setLoading(false);
     onClose();
   };
@@ -52,6 +51,27 @@ export default function EditMemberModal({ member, onClose, onSave }: {
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Full Name *</label>
             <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
               className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" required />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Relation</label>
+            <select value={form.relation} onChange={e => setForm(p => ({ ...p, relation: e.target.value }))}
+              className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100">
+              {['Spouse', 'Father', 'Mother', 'Son', 'Daughter', 'Brother', 'Sister', 'Other'].map(r => <option key={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">WhatsApp Phone *</label>
+            <PhoneInput
+              value={form.phone}
+              onChange={(value) => setForm(p => ({ ...p, phone: value }))}
+              placeholder="Enter 10 digit mobile number"
+              required
+            />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email</label>
+            <input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+              type="email" className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100" />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} disabled={loading} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
