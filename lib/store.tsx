@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { api } from './api';
 
 export const DOCUMENT_CATEGORIES = ['PAN Card', 'Aadhaar Card', 'GST Certificate', 'Udyam Certificate', 'ITR', 'Other'] as const;
-export type DocumentCategory = typeof DOCUMENT_CATEGORIES[number];
+export type DocumentCategory = string; // Now allows custom categories from masters
 
 export const ITR_YEARS = ['2024-25', '2023-24', '2022-23', '2021-22'] as const;
 export type ItrYear = string; // Now dynamic - fetched from backend
@@ -27,6 +27,14 @@ export type FamilyMember = {
   phone: string;
   email: string;
   documents: Document[];
+};
+
+export type Master = {
+  _id: string;
+  name: string;
+  type: 'relation' | 'category' | 'status' | 'other';
+  isActive: boolean;
+  createdAt: string;
 };
 
 export type Client = {
@@ -57,6 +65,12 @@ type Store = {
   updateDocumentWithFile: (clientId: string, docId: string, file: File, data: { name?: string; category?: DocumentCategory; itrYear?: ItrYear; type?: string; size?: string }, memberId?: string) => Promise<void>;
   deleteDocument: (clientId: string, docId: string, memberId?: string) => Promise<void>;
   findByPhone: (phone: string) => Client | undefined;
+
+  // Master functions
+  getMasters: (type?: string) => Promise<Master[]>;
+  createMaster: (master: Omit<Master, '_id' | 'createdAt' | 'isActive'>) => Promise<Master>;
+  updateMaster: (id: string, master: Partial<Master>) => Promise<Master>;
+  deleteMaster: (id: string) => Promise<void>;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -211,23 +225,45 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return clients.find(c => c.phone.replace(/\s+/g, '') === normalized);
   };
 
+  // Master functions
+  const getMasters = async (type?: string) => {
+    const params = type ? `?type=${type}` : '';
+    return await api.get(`/masters${params}`);
+  };
+
+  const createMaster = async (master: Omit<Master, '_id' | 'createdAt' | 'isActive'>) => {
+    return await api.post('/masters', master);
+  };
+
+  const updateMaster = async (id: string, master: Partial<Master>) => {
+    return await api.put(`/masters/${id}`, master);
+  };
+
+  const deleteMaster = async (id: string) => {
+    return await api.delete(`/masters/${id}`);
+  };
+
   return (
-    <StoreContext.Provider value={{ 
-      clients, 
-      loading, 
-      error, 
+    <StoreContext.Provider value={{
+      clients,
+      loading,
+      error,
       fetchClients,
-      addClient, 
-      updateClient, 
-      deleteClient, 
-      addFamilyMember, 
-      deleteFamilyMember, 
-      addDocument, 
+      addClient,
+      updateClient,
+      deleteClient,
+      addFamilyMember,
+      deleteFamilyMember,
+      addDocument,
       uploadDocument,
       updateDocument,
       updateDocumentWithFile,
-      deleteDocument, 
-      findByPhone 
+      deleteDocument,
+      findByPhone,
+      getMasters,
+      createMaster,
+      updateMaster,
+      deleteMaster
     }}>
       {children}
     </StoreContext.Provider>

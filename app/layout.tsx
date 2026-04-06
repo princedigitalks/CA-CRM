@@ -4,6 +4,7 @@ import './globals.css';
 import DashboardLayout from '@/components/DashboardLayout';
 import { ToastProvider } from '@/components/Toast';
 import { AuthProvider } from '@/lib/auth';
+import { StoreProvider } from '@/lib/store';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' });
@@ -17,11 +18,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body suppressHydrationWarning>
-        <AuthProvider>
-          <ToastProvider>
-            <DashboardLayout>{children}</DashboardLayout>
-          </ToastProvider>
-        </AuthProvider>
+        <StoreProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <DashboardLayout>{children}</DashboardLayout>
+            </ToastProvider>
+          </AuthProvider>
+        </StoreProvider>
       </body>
     </html>
   );

@@ -403,6 +403,7 @@ export function UploadDocModal({
     const [uploadNewFile, setUploadNewFile] = useState(false);
     const [uploadMode, setUploadMode] = useState<'file' | 'link'>('file');
     const [link, setLink] = useState('');
+    const [masters, setMasters] = useState<{ _id: string; name: string; type: string; isActive: boolean }[]>([]);
 
     // Fetch ITR years from backend
     useEffect(() => {
@@ -418,6 +419,19 @@ export function UploadDocModal({
             }
         };
         fetchItrYears();
+    }, []);
+
+    // Fetch masters from backend
+    useEffect(() => {
+        const fetchMasters = async () => {
+            try {
+                const data = await api.get('/masters?type=other');
+                setMasters(data);
+            } catch {
+                // fallback silently
+            }
+        };
+        fetchMasters();
     }, []);
 
     console.log(form.category,'form.category')
@@ -762,7 +776,9 @@ export function UploadDocModal({
                                     onChange={e => setForm(p => ({ ...p, category: e.target.value as Document['category'], itrYear: undefined }))}
                                     className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50 disabled:text-gray-500"
                                 >
-                                    {DOCUMENT_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                                    {DOCUMENT_CATEGORIES.filter(c => c !== 'Other').map(c => <option key={c}>{c}</option>)}
+                                    {masters.map(m => <option key={`master-${m._id}`} value={m.name}>{m.name}</option>)}
+                                    {masters.length === 0 && <option value="Other">Other</option>}
                                 </select>
                             </div>
                         </div>
@@ -776,7 +792,9 @@ export function UploadDocModal({
                                 onChange={e => setForm(p => ({ ...p, category: e.target.value as Document['category'], itrYear: undefined }))}
                                 className="mt-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-100"
                             >
-                                {DOCUMENT_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                                {DOCUMENT_CATEGORIES.filter(c => c !== 'Other').map(c => <option key={c}>{c}</option>)}
+                                {masters.map(m => <option key={`master-${m._id}`} value={m.name}>{m.name}</option>)}
+                                {masters.length === 0 && <option value="Other">Other</option>}
                             </select>
                         </div>
                     )}

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, HelpCircle, Shield, LogOut, Settings, DatabaseZapIcon } from 'lucide-react';
+import { LayoutDashboard, Users, HelpCircle, Shield, LogOut, Settings, DatabaseZapIcon, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ const navItems = [
 ];
 
 const adminNavItems = [
+  { icon: Database, label: 'Masters', href: '/masters' },
   { icon: DatabaseZapIcon, label: 'ITR Years', href: '/settings/itr-years' },
   { icon: Settings, label: 'Staff Management', href: '/settings/staff' },
 ];
