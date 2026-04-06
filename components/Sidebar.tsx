@@ -15,7 +15,7 @@ const navItems = [
 ];
 
 const adminNavItems = [
-  { icon: Database, label: 'Masters', href: '/masters' },
+  { icon: Database, label: 'Other', href: '/masters' },
   { icon: DatabaseZapIcon, label: 'ITR Years', href: '/settings/itr-years' },
   { icon: Settings, label: 'Staff Management', href: '/settings/staff' },
 ];
